@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="stack">
+
+  <div class="card">
+    <div class="row two">
+      <h2>Budget AAP — Synthèse</h2>
+      <div class="muted">{{ projet.nom }}</div>
+    </div>
+    <div class="row three">
+      <a class="btn" href="{{ url_for('projets.projet_budget_charges', projet_id=projet.id) }}">Charges</a>
+      <a class="btn" href="{{ url_for('projets.projet_budget_produits', projet_id=projet.id) }}">Produits / financeurs</a>
+      <a class="btn" href="{{ url_for('projets.projet_budget_ventilation', projet_id=projet.id) }}">Ventilation</a>
+      <a class="btn" href="{{ url_for('projets.projet_budget_synthese', projet_id=projet.id) }}">Synthèse</a>
+      <a class="btn" href="{{ url_for('projets.projets_edit', projet_id=projet.id) }}">↩ Retour projet</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row three">
+      <div><strong>Total charges (prévisionnel)</strong><br>{{ "%.2f"|format(projet.total_charges_previsionnel or 0) }}€</div>
+      <div><strong>Total produits demandés</strong><br>{{ "%.2f"|format(projet.total_produits_demandes or 0) }}€</div>
+      <div><strong>Total produits accordés</strong><br>{{ "%.2f"|format(projet.total_produits_accordes or 0) }}€</div>
+      <div><strong>Reste à financer</strong><br>{{ "%.2f"|format(projet.reste_a_financer or 0) }}€</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Alertes</h3>
+    <ul>
+    {% for a in alertes %}
+      <li>{{ a }}</li>
+    {% else %}
+      <li class="muted">Aucune alerte, c’est presque louche.</li>
+    {% endfor %}
+    </ul>
+  </div>
+
+</div>
+{% endblock %}

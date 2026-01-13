@@ -1,0 +1,83 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="stack">
+
+  <div class="card">
+    <div class="row two">
+      <h2>Budget AAP — Charges</h2>
+      <div class="muted">{{ projet.nom }}</div>
+    </div>
+    <div class="row three">
+      <a class="btn" href="{{ url_for('projets.projet_budget_charges', projet_id=projet.id) }}">Charges</a>
+      <a class="btn" href="{{ url_for('projets.projet_budget_produits', projet_id=projet.id) }}">Produits / financeurs</a>
+      <a class="btn" href="{{ url_for('projets.projet_budget_ventilation', projet_id=projet.id) }}">Ventilation</a>
+      <a class="btn" href="{{ url_for('projets.projet_budget_synthese', projet_id=projet.id) }}">Synthèse</a>
+      <a class="btn" href="{{ url_for('projets.projets_edit', projet_id=projet.id) }}">↩ Retour projet</a>
+    </div>
+
+    <div class="spacer"></div>
+
+    <form method="post" class="row three">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <input name="libelle" placeholder="Libellé (ex: Animateur - 0,5 ETP)" required>
+      <select name="bloc">
+        <option value="directe">Directe</option>
+        <option value="indirecte">Indirecte</option>
+      </select>
+      <input name="code_plan" placeholder="Code (60/61/62/64...)" value="60" style="max-width:140px">
+      <input name="montant_previsionnel" type="number" step="0.01" placeholder="Prévisionnel (€)" style="max-width:180px">
+      <input name="montant_reel" type="number" step="0.01" placeholder="Réel (€) (option)" style="max-width:180px">
+      <input name="commentaire" placeholder="Commentaire (option)">
+      <button class="btn ok" type="submit">Ajouter</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Bloc</th>
+            <th>Code</th>
+            <th>Libellé</th>
+            <th>Prévisionnel</th>
+            <th>Réel</th>
+            <th>Ventilé</th>
+            <th>Reste à financer</th>
+            <th>Engagé</th>
+            <th>Reste à engager</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for c in charges %}
+          <tr>
+            <td>{{ c.bloc }}</td>
+            <td>{{ c.code_plan }}</td>
+            <td>{{ c.libelle }}</td>
+            <td>{{ "%.2f"|format(c.montant_previsionnel or 0) }}€</td>
+            <td>{{ "%.2f"|format(c.montant_reel or 0) }}€</td>
+            <td>{{ "%.2f"|format(c.ventile or 0) }}€</td>
+            <td>{{ "%.2f"|format(c.reste_a_financer or 0) }}€</td>
+            <td>{{ "%.2f"|format(c.engage or 0) }}€</td>
+            <td>{{ "%.2f"|format(c.reste_a_engager or 0) }}€</td>
+            <td style="white-space:nowrap">
+              <a class="btn" href="{{ url_for('projets.projet_budget_charge_edit', projet_id=projet.id, charge_id=c.id) }}">✏️</a>
+              <form method="post" action="{{ url_for('projets.projet_budget_charge_delete', projet_id=projet.id, charge_id=c.id) }}" style="display:inline" onsubmit="return confirm('Supprimer cette charge ?');">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <button class="btn" type="submit">🗑️</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="10" class="muted">Aucune charge pour le moment.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
