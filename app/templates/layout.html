@@ -160,7 +160,7 @@
         <div class="brand">App Gestion</div>
 
         {% if current_user.is_authenticated %}
-          {% if current_user.role != "admin_tech" %}
+          {% if not has_role("admin_tech") %}
 
             {# ----------------------------
                MENU UTILISATEUR (RBAC)
@@ -236,7 +236,7 @@
             <div class="pill" id="themeToggle" title="Changer de thème">🌙</div>
 
             <div class="tag">
-              {{ current_user.nom }} · {{ current_user.role }}
+              {{ current_user.nom }} · {{ current_user.role_codes|join(', ') }}
               {% if current_user.secteur_assigne %} · {{ current_user.secteur_assigne }}{% endif %}
             </div>
 

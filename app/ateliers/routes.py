@@ -1,9 +1,9 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
-from flask_login import login_required, current_user
+from flask_login import login_required
 
 from app.extensions import db
 from app.models import Atelier, Projet, ProjetAtelier
-from app.rbac import require_perm
+from app.rbac import require_perm, can
 from app.ateliers.services import sync_ateliers_from_presence_db
 
 
@@ -11,7 +11,7 @@ bp = Blueprint("ateliers", __name__)
 
 
 def _can_manage() -> bool:
-    return current_user.role in ("finance", "financiere", "financière", "directrice", "responsable_secteur")
+    return can("ateliers:sync")
 
 
 @bp.route("/ateliers")
@@ -20,8 +20,6 @@ def _can_manage() -> bool:
 def list_ateliers():
     # Les responsables secteur ne voient que les ateliers déjà rattachés à leurs projets
     q = Atelier.query
-    if current_user.role == "admin_tech":
-        abort(403)
     # Note: on affiche tous les ateliers synchronisés pour permettre le repérage.
     # Le filtrage par secteur se fait au niveau des projets (can_see_secteur).
 

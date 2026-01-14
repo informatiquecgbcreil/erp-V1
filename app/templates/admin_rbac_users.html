@@ -20,7 +20,7 @@
           <b>{{ u.nom }}</b><br>
           <span style="opacity:.75;">{{ u.email }}</span>
         </td>
-        <td>{{ u.role }}</td>
+        <td>{{ u.role_codes|join(', ') }}</td>
         <td>{{ u.secteur_assigne or "" }}</td>
         <td>
           <form method="post" action="{{ url_for('admin.rbac_user_set_role', user_id=u.id) }}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">

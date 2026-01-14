@@ -6,16 +6,16 @@ from werkzeug.utils import secure_filename
 
 from app.extensions import db
 from app.models import Subvention, LigneBudget, Depense, DepenseDocument
-from app.rbac import require_perm
+from app.rbac import require_perm, has_role, has_any_role
 
 bp = Blueprint("budget", __name__)
 
 ALLOWED_EXT = {"pdf", "png", "jpg", "jpeg", "webp", "doc", "docx", "xls", "xlsx"}
 
 def can_see_secteur(secteur: str) -> bool:
-    if current_user.role in ("directrice", "finance"):
+    if has_any_role({"direction", "finance"}):
         return True
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         return current_user.secteur_assigne == secteur
     return False
 
@@ -40,11 +40,11 @@ def ensure_justifs_folder():
 @login_required
 @require_perm("depenses:create")
 def depense_new():
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     subs_q = Subvention.query.filter_by(est_archive=False)
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         subs_q = subs_q.filter(Subvention.secteur == current_user.secteur_assigne)
     subs = subs_q.order_by(Subvention.annee_exercice.desc(), Subvention.nom.asc()).all()
 
@@ -131,7 +131,7 @@ def depense_new():
 @login_required
 @require_perm("depenses:create")
 def depense_edit(depense_id):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     dep = Depense.query.get_or_404(depense_id)
@@ -204,7 +204,7 @@ def depense_edit(depense_id):
 @login_required
 @require_perm("depenses:delete")
 def depense_delete(depense_id):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     dep = Depense.query.get_or_404(depense_id)
@@ -235,7 +235,7 @@ def depense_delete(depense_id):
 @login_required
 @require_perm("depenses:view")
 def depense_doc_download(doc_id):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     doc = DepenseDocument.query.get_or_404(doc_id)
@@ -251,7 +251,7 @@ def depense_doc_download(doc_id):
 @login_required
 @require_perm("depenses:delete")
 def depense_doc_delete(doc_id):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     doc = DepenseDocument.query.get_or_404(doc_id)
@@ -279,12 +279,12 @@ def depense_doc_delete(doc_id):
 @login_required
 @require_perm("depenses:view")
 def depenses_list():
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     # liste des subventions visibles
     subs_q = Subvention.query.filter_by(est_archive=False)
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         subs_q = subs_q.filter(Subvention.secteur == current_user.secteur_assigne)
     subs = subs_q.order_by(Subvention.annee_exercice.desc(), Subvention.nom.asc()).all()
 
@@ -294,7 +294,7 @@ def depenses_list():
 
     dep_q = Depense.query.join(LigneBudget).join(Subvention)
 
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         dep_q = dep_q.filter(Subvention.secteur == current_user.secteur_assigne)
 
     if sub_id:
@@ -318,4 +318,3 @@ def depenses_list():
         selected_ligne_id=ligne_id,
         deps=deps,
     )
-

@@ -55,6 +55,9 @@ DEFAULT_PERMS: list[tuple[str, str]] = [
     ("activite:delete", "Supprimer une activité"),
     ("activite:purge", "Purger des activités"),
 
+    ("ateliers:view", "Voir les ateliers"),
+    ("ateliers:sync", "Synchroniser les ateliers"),
+
     ("admin:users", "Gérer les utilisateurs"),
     ("admin:rbac", "Gérer les droits (RBAC)"),
 ]
@@ -97,6 +100,9 @@ ROLE_TEMPLATES: dict[str, dict[str, Iterable[str]]] = {
 
             "stats:view",
             "bilans:view",
+
+            "ateliers:view",
+            "ateliers:sync",
         ],
     },
     "responsable_secteur": {
@@ -120,6 +126,9 @@ ROLE_TEMPLATES: dict[str, dict[str, Iterable[str]]] = {
             "pedagogie:view",
             "stats:view",
             "bilans:view",
+
+            "ateliers:view",
+            "ateliers:sync",
         ],
     },
 }
@@ -144,6 +153,7 @@ def _category_from_code(code: str) -> str:
         "stats": "Stats",
         "statsimpact": "Stats impact",
         "bilans": "Bilans",
+        "ateliers": "Ateliers",
         "admin": "Admin",
     }
     return mapping.get(module, module.capitalize())
@@ -295,3 +305,26 @@ def can(code: str) -> bool:
         return False
 
     return any(has_perm_fn(c) for c in wanted)
+
+
+def has_role(code: str) -> bool:
+    if not current_user.is_authenticated:
+        return False
+
+    has_role_fn = getattr(current_user, "has_role", None)
+    if callable(has_role_fn):
+        return has_role_fn(code)
+
+    return code in getattr(current_user, "role_codes", [])
+
+
+def has_any_role(codes: Iterable[str]) -> bool:
+    if not current_user.is_authenticated:
+        return False
+
+    has_any_role_fn = getattr(current_user, "has_any_role", None)
+    if callable(has_any_role_fn):
+        return has_any_role_fn(codes)
+
+    role_codes = set(getattr(current_user, "role_codes", []))
+    return any(code in role_codes for code in codes)

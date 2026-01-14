@@ -36,13 +36,13 @@
 
       <div>
         <div class="muted" style="font-size:12px; margin-bottom:6px">Secteur</div>
-        <select class="in" name="secteur" style="min-width:170px" {% if current_user.role == 'responsable_secteur' %}disabled{% endif %}>
+        <select class="in" name="secteur" style="min-width:170px" {% if has_role('responsable_secteur') %}disabled{% endif %}>
           <option value="">-- tous --</option>
           {% for s in secteurs %}
             <option value="{{ s }}" {% if selected_secteur == s %}selected{% endif %}>{{ s }}</option>
           {% endfor %}
         </select>
-        {% if current_user.role == 'responsable_secteur' %}
+        {% if has_role('responsable_secteur') %}
           <input type="hidden" name="secteur" value="{{ current_user.secteur_assigne }}">
         {% endif %}
       </div>

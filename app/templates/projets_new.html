@@ -15,7 +15,7 @@
           <input name="nom" required>
         </div>
 
-        {% if current_user.role == "responsable_secteur" %}
+        {% if has_role("responsable_secteur") %}
           <div>
             <label>Secteur (verrouillé)</label>
             <input value="{{ current_user.secteur_assigne }}" disabled>

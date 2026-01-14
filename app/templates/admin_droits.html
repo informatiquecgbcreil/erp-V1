@@ -68,7 +68,7 @@
                   <button class="rbac-btn primary" type="submit">Enregistrer</button>
                 </form>
                 <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
-                  <span class="rbac-pill">legacy: {{ u.role }}</span>
+                  <span class="rbac-pill">rôles: {{ assigned | join(', ') }}</span>
                   {% if u.secteur_assigne %}<span class="rbac-pill">{{ u.secteur_assigne }}</span>{% endif %}
                 </div>
               </td>

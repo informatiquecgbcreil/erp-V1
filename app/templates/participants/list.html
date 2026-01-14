@@ -14,7 +14,7 @@
       <input class="in" style="max-width:320px" type="text" name="q"
              placeholder="Nom, prénom, email, téléphone" value="{{ q }}">
 
-      {% if current_user.role == 'responsable_secteur' %}
+      {% if has_role('responsable_secteur') %}
         <select name="scope" class="in" style="max-width:280px">
           <!-- par défaut, scope est vide => comportement 'secteur' -->
           <option value="" {% if not scope or scope=='secteur' %}selected{% endif %}>
@@ -42,7 +42,7 @@
       <a class="btn" href="{{ url_for('participants.list_participants') }}">Reset</a>
     </form>
 
-    {% if current_user.role == 'responsable_secteur' and scope == 'annuaire' %}
+    {% if has_role('responsable_secteur') and scope == 'annuaire' %}
       <div class="muted" style="margin-top:8px; font-size:12px">
         ⚠️ L’annuaire global s’affiche uniquement avec une recherche (au moins 2 caractères).
         Sans recherche, la page revient automatiquement au mode “Dans mon secteur”.

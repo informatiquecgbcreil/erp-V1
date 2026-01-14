@@ -6,7 +6,6 @@
       <h2>Utilisateur courant</h2>
       <p><b>Nom:</b> {{ current_user.nom }}</p>
       <p><b>Email:</b> {{ current_user.email }}</p>
-      <p><b>Legacy role:</b> {{ current_user.role }}</p>
       <p><b>RBAC roles:</b> {{ current_user.role_codes|join(', ') }}</p>
     </div>
 

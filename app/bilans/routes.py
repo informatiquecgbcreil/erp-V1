@@ -1,4 +1,4 @@
-from app.rbac import require_perm
+from app.rbac import require_perm, has_role
 import datetime
 
 from flask import Blueprint, render_template, request, abort
@@ -29,7 +29,7 @@ bp = Blueprint("bilans", __name__, url_prefix="")
 @require_perm("bilans:view")
 def dashboard():
     # admin_tech : pas d'accès aux bilans financiers
-    if getattr(current_user, "role", None) == "admin_tech":
+    if has_role("admin_tech"):
         return render_template("bilans_dashboard.html", forbidden=True)
 
     scope = scope_for_user(current_user)
@@ -70,7 +70,7 @@ def dashboard():
 @login_required
 def bilans_lourds():
     # admin_tech : pas d'accès aux bilans financiers
-    if getattr(current_user, "role", None) == "admin_tech":
+    if has_role("admin_tech"):
         return render_template("bilans_lourds.html", forbidden=True, year=datetime.date.today().year, stats=None)
 
     year = request.args.get("year", type=int) or datetime.date.today().year
@@ -83,7 +83,7 @@ def bilans_lourds():
 @login_required
 @require_perm("bilans:view")
 def bilan_secteur():
-    if getattr(current_user, "role", None) == "admin_tech":
+    if has_role("admin_tech"):
         return render_template("bilans_secteur.html", forbidden=True)
 
     scope = scope_for_user(current_user)
@@ -125,7 +125,7 @@ def bilan_secteur():
 @login_required
 @require_perm("bilans:view")
 def bilan_subvention():
-    if getattr(current_user, "role", None) == "admin_tech":
+    if has_role("admin_tech"):
         return render_template("bilans_subvention.html", forbidden=True)
 
     scope = scope_for_user(current_user)
@@ -171,7 +171,7 @@ def bilan_subvention():
 @bp.route("/bilans/qualite")
 @login_required
 def qualite():
-    if getattr(current_user, "role", None) == "admin_tech":
+    if has_role("admin_tech"):
         return render_template("bilans_qualite.html", forbidden=True)
 
     scope = scope_for_user(current_user)
@@ -191,7 +191,7 @@ def qualite():
 @bp.route("/bilans/inventaire")
 @login_required
 def inventaire():
-    if getattr(current_user, "role", None) == "admin_tech":
+    if has_role("admin_tech"):
         return render_template("bilans_inventaire.html", forbidden=True)
 
     scope = scope_for_user(current_user)

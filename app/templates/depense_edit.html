@@ -144,7 +144,7 @@
       <div class="grid two">
         <div>
           <label>Secteur</label>
-          <input name="secteur" value="{{ inventaire_secteur }}" {% if current_user.role == 'responsable_secteur' %}readonly{% endif %}>
+          <input name="secteur" value="{{ inventaire_secteur }}" {% if has_role('responsable_secteur') %}readonly{% endif %}>
         </div>
         <div>
           <label>Date d’entrée</label>

@@ -13,7 +13,7 @@
         <div class="grid2">
           <div>
             <label>Secteur</label>
-            {% if current_user.role == 'responsable_secteur' %}
+            {% if has_role('responsable_secteur') %}
               <input type="text" name="secteur" value="{{ default_secteur }}" readonly>
             {% else %}
               <input type="text" name="secteur" placeholder="Ex: Numérique" value="{{ default_secteur }}">

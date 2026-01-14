@@ -72,13 +72,13 @@ def create_app():
     # ---------------------------------------------------------------
     # RBAC : helper Jinja (can) + bootstrap roles/perms
     # ---------------------------------------------------------------
-    from app.rbac import bootstrap_rbac, can
+    from app.rbac import bootstrap_rbac, can, has_role, has_any_role
 
     @app.context_processor
     def _inject_rbac_helpers():
         # Utilisation dans les templates:
         #   {% if can('subventions:edit') %} ... {% endif %}
-        return {"can": can}
+        return {"can": can, "has_role": has_role, "has_any_role": has_any_role}
 
     # ---------------------------------------------------------------------
     # ensure_schema: migrations "légères" compatibles SQLite/Postgres

@@ -8,10 +8,6 @@ from app.rbac import require_perm
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 
-def is_admin_tech():
-    return current_user.is_authenticated and current_user.role == "admin_tech"
-
-
 def _get_single_role_code_from_form() -> str | None:
     """Accept both old multi-select ('role_codes') and new single-select ('role_code' or 'roles')."""
     # Old UI: <select multiple name="role_codes">
@@ -30,20 +26,19 @@ def _get_single_role_code_from_form() -> str | None:
 
 @bp.route("/users", methods=["GET", "POST"])
 @login_required
+@require_perm("admin:users")
 def users():
-    if not is_admin_tech():
-        abort(403)
-
     secteurs = current_app.config.get("SECTEURS", [])
+    roles = Role.query.order_by(Role.code.asc()).all()
 
     if request.method == "POST":
         email = (request.form.get("email") or "").strip().lower()
         nom = (request.form.get("nom") or "").strip()
-        role = (request.form.get("role") or "").strip()
+        role_code = _get_single_role_code_from_form()
         secteur = (request.form.get("secteur_assigne") or "").strip() or None
         password = (request.form.get("password") or "").strip()
 
-        if not email or not nom or not role or not password:
+        if not email or not nom or not role_code or not password:
             flash("Email, nom, rôle, mot de passe obligatoires.", "danger")
             return redirect(url_for("admin.users"))
 
@@ -51,24 +46,28 @@ def users():
             flash("Email déjà utilisé.", "danger")
             return redirect(url_for("admin.users"))
 
-        u = User(email=email, nom=nom, role=role, secteur_assigne=secteur)
+        role = Role.query.filter_by(code=role_code).first()
+        if not role:
+            flash("Rôle introuvable.", "danger")
+            return redirect(url_for("admin.users"))
+
+        u = User(email=email, nom=nom, role=role.code, secteur_assigne=secteur)
         u.set_password(password)
+        u.roles = [role]
         db.session.add(u)
         db.session.commit()
 
         flash("Utilisateur créé.", "success")
         return redirect(url_for("admin.users"))
 
-    users_list = User.query.order_by(User.role.asc(), User.nom.asc()).all()
-    return render_template("admin_users.html", users=users_list, secteurs=secteurs)
+    users_list = User.query.order_by(User.nom.asc()).all()
+    return render_template("admin_users.html", users=users_list, secteurs=secteurs, roles=roles)
 
 
 @bp.route("/delete/<int:user_id>", methods=["POST"])
 @login_required
+@require_perm("admin:users")
 def delete_user(user_id):
-    if not is_admin_tech():
-        abort(403)
-
     if current_user.id == user_id:
         flash("Tu peux pas te supprimer toi-même.", "danger")
         return redirect(url_for("admin.users"))
