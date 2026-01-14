@@ -54,8 +54,7 @@ from flask import (
     abort, current_app, Response, jsonify
 )
 from flask_login import login_required, current_user
-from app.rbac import require_perm
-from ..rbac import require_perm
+from app.rbac import require_perm, has_role, has_any_role
 
 from app.extensions import db
 from app.models import Subvention, LigneBudget, Depense, Projet, SubventionProjet, AtelierActivite, SessionActivite, PresenceActivite, ProjetAtelier, ProjetIndicateur
@@ -65,9 +64,9 @@ bp = Blueprint("main", __name__)
 
 # --------- Permissions ---------
 def can_see_secteur(secteur: str) -> bool:
-    if current_user.role in ("directrice", "finance"):
+    if has_any_role({"direction", "finance"}):
         return True
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         return current_user.secteur_assigne == secteur
     return False  # admin_tech n'accède pas aux données budgétaires
 
@@ -128,13 +127,13 @@ def dashboard():
 @bp.route("/subventions")
 @login_required
 def subventions_list():
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     secteurs = current_app.config.get("SECTEURS", [])
 
     subs_q = Subvention.query.filter_by(est_archive=False)
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         subs_q = subs_q.filter(Subvention.secteur == current_user.secteur_assigne)
 
     subs = subs_q.order_by(Subvention.annee_exercice.desc(), Subvention.nom.asc()).all()
@@ -145,7 +144,7 @@ def subventions_list():
 @login_required
 @require_perm('subventions:edit')
 def subvention_create():
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     nom = (request.form.get("nom") or "").strip()
@@ -156,7 +155,7 @@ def subvention_create():
     montant_attribue = float(request.form.get("montant_attribue") or 0)
     montant_recu = float(request.form.get("montant_recu") or 0)
 
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         secteur = current_user.secteur_assigne
 
     if not nom or not secteur:
@@ -185,7 +184,7 @@ def subvention_create():
 @bp.route("/subvention/<int:subvention_id>/pilotage", methods=["GET", "POST"])
 @login_required
 def subvention_pilotage(subvention_id):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     sub = Subvention.query.get_or_404(subvention_id)
@@ -278,7 +277,7 @@ def subvention_pilotage(subvention_id):
 
     # --- GET : données pour page ---
     projets_q = Projet.query.filter(Projet.secteur == sub.secteur)
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         projets_q = projets_q.filter(Projet.secteur == current_user.secteur_assigne)
 
     projets = projets_q.order_by(Projet.nom.asc()).all()
@@ -318,7 +317,7 @@ def subvention_pilotage(subvention_id):
 @login_required
 @require_perm('subventions:delete')
 def subvention_delete(subvention_id):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     sub = Subvention.query.get_or_404(subvention_id)
@@ -335,7 +334,7 @@ def subvention_delete(subvention_id):
 @bp.route("/ligne/<int:ligne_id>/edit", methods=["POST"])
 @login_required
 def ligne_edit(ligne_id):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     l = LigneBudget.query.get_or_404(ligne_id)
@@ -358,7 +357,7 @@ def ligne_edit(ligne_id):
 @login_required
 @require_perm('budget:delete')
 def ligne_delete(ligne_id):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     l = LigneBudget.query.get_or_404(ligne_id)
@@ -377,7 +376,7 @@ def ligne_delete(ligne_id):
 @bp.route("/subvention/<int:subvention_id>/toggle_projet", methods=["POST"])
 @login_required
 def subvention_toggle_projet(subvention_id):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     sub = Subvention.query.get_or_404(subvention_id)
@@ -408,7 +407,7 @@ def subvention_toggle_projet(subvention_id):
 @bp.route("/api/subvention/<int:subvention_id>/comptes")
 @login_required
 def api_comptes(subvention_id):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     sub = Subvention.query.get_or_404(subvention_id)
@@ -428,7 +427,7 @@ def api_comptes(subvention_id):
 @bp.route("/api/subvention/<int:subvention_id>/lignes")
 @login_required
 def api_lignes(subvention_id):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     sub = Subvention.query.get_or_404(subvention_id)
@@ -473,7 +472,7 @@ def stats():
     Responsable de secteur : le filtre secteur est forcé sur son secteur.
     Option : filtre projet (projet_id) pour croiser finance + indicateurs participants.
     """
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     # --- Lecture filtres (année, secteur, projet) ---
@@ -516,7 +515,7 @@ def stats():
         sub_q = sub_q.join(SubventionProjet, SubventionProjet.subvention_id == Subvention.id)                   .filter(SubventionProjet.projet_id == selected_projet_id)
 
     # Restriction responsable secteur
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         sub_q = sub_q.filter(Subvention.secteur == current_user.secteur_assigne)
         proj_q = proj_q.filter(Projet.secteur == current_user.secteur_assigne)
         selected_secteur = current_user.secteur_assigne
@@ -748,7 +747,7 @@ def stats():
 @bp.route("/stats-bilans")
 @login_required
 def stats_bilans():
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     # Objectif : éviter la confusion entre 2 écrans. Ici on explique la différence
@@ -771,7 +770,7 @@ from sqlalchemy import distinct
 @login_required
 @require_perm("bilans:view")
 def bilan_global():
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     # --- Lecture filtres ---
@@ -796,7 +795,7 @@ def bilan_global():
 
     # --- RESPONSABLE SECTEUR : on force le secteur, mais on autorise le filtre projet
     # uniquement si le projet appartient au même secteur.
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         selected_secteur = current_user.secteur_assigne
         if selected_projet_id:
             pjt = Projet.query.get(selected_projet_id)
@@ -857,12 +856,12 @@ def bilan_global():
     if not secteurs:
         secteurs = [r[0] for r in db.session.query(distinct(Subvention.secteur)).all() if r[0]]
 
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         secteurs = [current_user.secteur_assigne]
 
     # projets : uniquement ceux visibles
     projets_q = Projet.query
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         projets_q = projets_q.filter(Projet.secteur == current_user.secteur_assigne)
     projets = projets_q.order_by(Projet.secteur.asc(), Projet.nom.asc()).all()
 
@@ -891,11 +890,11 @@ def bilan():
 @bp.route("/export/depenses.csv")
 @login_required
 def export_depenses_csv():
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     dep_q = Depense.query.join(LigneBudget).join(Subvention)
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         dep_q = dep_q.filter(Subvention.secteur == current_user.secteur_assigne)
 
     deps = dep_q.all()
@@ -929,7 +928,7 @@ def export_depenses_csv():
 @bp.route("/export/subvention/<int:subvention_id>.csv")
 @login_required
 def export_subvention_csv(subvention_id):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     s = Subvention.query.get_or_404(subvention_id)
@@ -969,7 +968,7 @@ def subvention_bilan(subvention_id: int):
     Affiche un récapitulatif des montants demandés/attribués/reçus et des lignes de budget,
     avec une représentation graphique proportionnelle par ligne (charges et produits).
     """
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     sub = Subvention.query.get_or_404(subvention_id)

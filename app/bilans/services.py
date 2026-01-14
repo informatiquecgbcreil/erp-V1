@@ -17,7 +17,8 @@ class BilansScope:
 
 def scope_for_user(user) -> BilansScope:
     """Détermine le périmètre autorisé pour un utilisateur."""
-    if getattr(user, "role", None) in ("finance", "direction"):
+    role_codes = set(getattr(user, "role_codes", []) or [])
+    if {"finance", "direction"} & role_codes:
         return BilansScope(secteurs=None)
     # responsable_secteur : un seul secteur
     sec = getattr(user, "secteur_assigne", None)

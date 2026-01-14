@@ -1,5 +1,6 @@
 from datetime import datetime
 from datetime import date
+from typing import Iterable
 import json
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db
@@ -43,6 +44,13 @@ class User(db.Model):
             for p in getattr(role, "permissions", []) or []:
                 codes.add(p.code)
         return code in codes
+
+    def has_role(self, code: str) -> bool:
+        return any(r.code == code for r in getattr(self, "roles", []) or [])
+
+    def has_any_role(self, codes: Iterable[str]) -> bool:
+        allowed = set(codes)
+        return any(r.code in allowed for r in getattr(self, "roles", []) or [])
 
     @property
     def role_codes(self) -> list[str]:

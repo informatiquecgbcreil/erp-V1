@@ -8,7 +8,7 @@
     </select>
   </div>
 
-  {% if current_user.role == 'responsable_secteur' %}
+  {% if has_role('responsable_secteur') %}
     <input type="hidden" name="secteur" value="{{ secteur }}">
   {% else %}
     <div style="min-width:220px">

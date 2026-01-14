@@ -85,7 +85,7 @@
         </div>
       </div>
 
-      {% if current_user.role in ['finance', 'directrice'] %}
+      {% if has_any_role(['finance', 'direction']) %}
         <div style="max-width:360px">
           <label class="muted">Créé pour (secteur)</label>
           <input class="in" type="text" name="created_secteur" value="{{ item.created_secteur if item and item.created_secteur else '' }}">

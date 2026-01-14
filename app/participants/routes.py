@@ -4,7 +4,7 @@ from datetime import datetime
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
-from ..rbac import require_perm, can
+from ..rbac import require_perm, can, has_role, has_any_role
 
 from app.extensions import db
 from app.models import Participant, PresenceActivite, SessionActivite, Evaluation
@@ -18,17 +18,16 @@ def _current_secteur() -> str:
 
 
 def _is_global_role() -> bool:
-    return current_user.role in ("directrice", "finance")
+    return has_any_role({"direction", "finance"})
 
 
 def _can_read_participant(p: Participant) -> bool:
     # Lecture: permission RBAC
     if can('participants:view') or can('participants:edit') or can('participants:delete'):
         return True
-    # fallback legacy
     if _is_global_role():
         return True
-    if current_user.role == 'responsable_secteur':
+    if has_role("responsable_secteur"):
         return True
     return False
 
@@ -37,10 +36,9 @@ def _can_edit_participant(p: Participant) -> bool:
     # Édition: permission RBAC
     if can('participants:edit'):
         return True
-    # fallback legacy: propriétaire uniquement (sauf rôles globaux)
     if _is_global_role():
         return True
-    if current_user.role == 'responsable_secteur':
+    if has_role("responsable_secteur"):
         sec = _current_secteur()
         return bool(sec) and ((p.created_secteur or '') == sec)
     return False
@@ -51,7 +49,7 @@ def _can_see_participant(p: Participant) -> bool:
     # Utilisé uniquement pour les listings "dans mon secteur", PAS pour l'édition.
     if _is_global_role():
         return True
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         sec = _current_secteur()
         if not sec:
             return False
@@ -71,7 +69,7 @@ def _can_see_participant(p: Participant) -> bool:
 @bp.route("/")
 @login_required
 def list_participants():
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     q = (request.args.get("q") or "").strip()
@@ -83,7 +81,7 @@ def list_participants():
     if scope == "annuaire" and (not q or len(q) < 2):
         scope = "secteur"
 
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         sec = _current_secteur()
         if not sec:
             abort(403)
@@ -104,7 +102,7 @@ def list_participants():
                     (Participant.created_secteur == sec) | (Participant.id.in_(subq_presence_ids))
                 )
     else:
-        # finance/directrice : option filtre secteur
+        # finance/direction : option filtre secteur
         if scope == "secteur":
             sec = (request.args.get("secteur") or "").strip()
             if sec:
@@ -136,7 +134,7 @@ def list_participants():
 @login_required
 def search_participants():
     """Annuaire global (lecture seule) pour l'auto-complétion côté émargement."""
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     q = (request.args.get("q") or "").strip()
@@ -183,7 +181,7 @@ def search_participants():
 @bp.route("/new", methods=["GET", "POST"])
 @login_required
 def new_participant():
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     if request.method == "POST":
@@ -205,7 +203,7 @@ def new_participant():
             created_by_user_id=getattr(current_user, "id", None),
             created_secteur=(
                 _current_secteur()
-                if current_user.role == "responsable_secteur"
+                if has_role("responsable_secteur")
                 else (request.form.get("created_secteur") or "").strip() or None
             ),
         )
@@ -228,7 +226,7 @@ def new_participant():
 @bp.route("/<int:participant_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit_participant(participant_id: int):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     p = Participant.query.get_or_404(participant_id)
@@ -261,7 +259,7 @@ def edit_participant(participant_id: int):
         else:
             p.date_naissance = None
 
-        # finance/directrice peuvent requalifier created_secteur
+        # finance/direction peuvent requalifier created_secteur
         if _is_global_role():
             p.created_secteur = (request.form.get("created_secteur") or "").strip() or None
 
@@ -275,7 +273,7 @@ def edit_participant(participant_id: int):
 @bp.route("/<int:participant_id>/anonymize", methods=["POST"])
 @login_required
 def anonymize_participant(participant_id: int):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     p = Participant.query.get_or_404(participant_id)
@@ -304,7 +302,7 @@ def anonymize_participant(participant_id: int):
 @bp.route("/<int:participant_id>/delete", methods=["POST"])
 @login_required
 def delete_participant(participant_id: int):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
     if not can('participants:delete'):
         abort(403)
@@ -314,7 +312,7 @@ def delete_participant(participant_id: int):
         abort(403)
 
     # garde-fou : un responsable secteur ne supprime pas si le participant existe ailleurs
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         sec = _current_secteur()
         other = (
             db.session.query(PresenceActivite.id)

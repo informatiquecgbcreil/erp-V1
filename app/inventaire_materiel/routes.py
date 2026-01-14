@@ -7,16 +7,16 @@ from flask_login import login_required, current_user
 
 from app.extensions import db
 from app.models import InventaireItem, FactureLigne, Depense
-from app.rbac import require_perm
+from app.rbac import require_perm, has_role, has_any_role
 
 
 bp = Blueprint("inventaire_materiel", __name__, url_prefix="/inventaire")
 
 
 def can_see_secteur(secteur: str) -> bool:
-    if current_user.role in ("directrice", "finance"):
+    if has_any_role({"direction", "finance"}):
         return True
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         return (current_user.secteur_assigne or "") == (secteur or "")
     return False
 
@@ -27,9 +27,9 @@ def _require_can_see_item(item: InventaireItem):
 
 
 def _default_secteur() -> str:
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         return current_user.secteur_assigne or ""
-    # finance/directrice can choose; default empty
+    # finance/direction can choose; default empty
     return ""
 
 
@@ -83,11 +83,11 @@ def _next_id_interne(secteur: str, date_ref) -> str:
 @login_required
 @require_perm("inventaire:view")
 def list_items():
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     q = InventaireItem.query
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         q = q.filter(InventaireItem.secteur == current_user.secteur_assigne)
 
     # filtres
@@ -144,12 +144,12 @@ def list_items():
 @login_required
 @require_perm("inventaire:edit")
 def new_item():
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     if request.method == "POST":
         secteur = (request.form.get("secteur") or "").strip()
-        if current_user.role == "responsable_secteur":
+        if has_role("responsable_secteur"):
             secteur = current_user.secteur_assigne or ""
 
         if not secteur:
@@ -226,15 +226,15 @@ def new_item():
 @login_required
 @require_perm("inventaire:edit")
 def edit_item(item_id: int):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     item = InventaireItem.query.get_or_404(item_id)
     _require_can_see_item(item)
 
     if request.method == "POST":
-        # secteur: only finance/directrice can change, but still must be allowed
-        if current_user.role in ("finance", "directrice"):
+        # secteur: only finance/direction can change, but still must be allowed
+        if has_any_role({"finance", "direction"}):
             secteur = (request.form.get("secteur") or "").strip()
             if secteur:
                 item.secteur = secteur
@@ -284,7 +284,7 @@ def edit_item(item_id: int):
 @login_required
 @require_perm("inventaire:edit")
 def delete_item(item_id: int):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     item = InventaireItem.query.get_or_404(item_id)
@@ -301,7 +301,7 @@ def delete_item(item_id: int):
 @login_required
 def create_from_facture_ligne(ligne_id: int):
     """Créer une entrée inventaire pré-remplie depuis une ligne de facture."""
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     fl = FactureLigne.query.get_or_404(ligne_id)
@@ -339,7 +339,7 @@ def create_from_facture_ligne(ligne_id: int):
 @login_required
 def create_bulk_from_facture_ligne(ligne_id: int):
     """Créer N items unitaires (quantite=1) depuis une ligne de facture (quantite=N)."""
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     fl = FactureLigne.query.get_or_404(ligne_id)
@@ -386,7 +386,7 @@ def create_bulk_from_facture_ligne(ligne_id: int):
 @login_required
 def create_from_depense(depense_id: int):
     """Créer une entrée inventaire depuis une dépense (non liée à une facture)."""
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     dep = Depense.query.get_or_404(depense_id)

@@ -6,7 +6,7 @@ from datetime import datetime, date
 from flask import render_template, request, redirect, url_for, flash, current_app, send_file, abort
 from werkzeug.utils import secure_filename
 from flask_login import login_required, current_user
-from ..rbac import require_perm
+from ..rbac import require_perm, has_role
 from sqlalchemy import or_
 
 from app.extensions import db
@@ -31,7 +31,7 @@ from .services.mail_utils import send_email_with_attachment
 # ------------------ Helpers ------------------
 
 def _is_admin_global():
-    return current_user.is_authenticated and current_user.role == "admin_tech"
+    return current_user.is_authenticated and has_role("admin_tech")
 
 
 def _user_secteur():

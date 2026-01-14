@@ -7,7 +7,7 @@ import os
 
 from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, current_app, send_file
 from flask_login import login_required, current_user
-from app.rbac import can
+from app.rbac import can, has_role, has_any_role
 
 from sqlalchemy import func
 
@@ -50,15 +50,7 @@ def _can_view() -> bool:
     # RBAC first: si l'utilisateur a la permission, on laisse passer
     if can('statsimpact:view') or can('stats:view'):
         return True
-    # fallback legacy (compat)
-    return getattr(current_user, 'role', None) in (
-        'finance',
-        'financiere',
-        'financière',
-        'directrice',
-        'responsable_secteur',
-        'admin_tech',
-    )
+    return False
 
 
 def _safe_sheet_title(name: str, fallback: str = "Atelier") -> str:
@@ -72,8 +64,7 @@ def _safe_sheet_title(name: str, fallback: str = "Atelier") -> str:
 
 
 def _pedago_scope_secteur() -> str | None:
-    role = getattr(current_user, "role", None)
-    if role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         return (getattr(current_user, "secteur_assigne", None) or "").strip() or None
     return None
 
@@ -245,9 +236,8 @@ def _build_magato_per_atelier_workbook(flt) -> Workbook:
     """Export annuel type "Excel historique" : 1 feuille par atelier (matrice participants x sessions)."""
 
     # Cloisonnement : un responsable_secteur ne doit exporter que son secteur
-    role = getattr(current_user, "role", None)
     eff_secteur = flt.secteur
-    if role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         eff_secteur = (getattr(current_user, "secteur_assigne", None) or "").strip() or eff_secteur
 
     # Liste des ateliers dans le périmètre
@@ -450,9 +440,8 @@ def dashboard():
 
             # Sécurité secteur: un responsable_secteur ne peut purger un participant
             # que si ce participant n'a des présences que dans SON secteur (ou aucune).
-            role = getattr(current_user, "role", None)
             user_secteur = (getattr(current_user, "secteur_assigne", None) or "").strip()
-            if role == "responsable_secteur":
+            if has_role("responsable_secteur"):
                 sectors = (
                     PresenceActivite.query.join(SessionActivite, PresenceActivite.session_id == SessionActivite.id)
                     .with_entities(SessionActivite.secteur)
@@ -534,7 +523,7 @@ def dashboard():
     participants = compute_participants_stats(flt)
 
     secteurs = []
-    if getattr(current_user, "role", None) in ("finance", "financiere", "financière", "directrice", "admin_tech"):
+    if can("statsimpact:view_all") or can("stats:view_all") or has_any_role({"direction", "finance"}):
         secteurs = [
             s[0]
             for s in (
@@ -556,9 +545,8 @@ def dashboard():
 
     # Années disponibles (pour presets "année") dans le périmètre accessible
     try:
-        role = getattr(current_user, "role", None)
         eff_secteur = flt.secteur
-        if role == "responsable_secteur":
+        if has_role("responsable_secteur"):
             eff_secteur = (getattr(current_user, "secteur_assigne", None) or "").strip() or eff_secteur
 
         year_expr = func.extract("year", func.coalesce(SessionActivite.rdv_date, SessionActivite.date_session))

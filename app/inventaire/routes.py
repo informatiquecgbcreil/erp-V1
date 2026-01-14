@@ -7,7 +7,7 @@ from werkzeug.utils import secure_filename
 
 from app.extensions import db
 from app.models import Subvention, LigneBudget, Depense, FactureAchat, FactureLigne
-from app.rbac import require_perm
+from app.rbac import require_perm, has_role, has_any_role
 
 
 bp = Blueprint("inventaire", __name__, url_prefix="/factures")
@@ -17,9 +17,9 @@ ALLOWED_EXT = {"pdf", "png", "jpg", "jpeg", "webp"}
 
 
 def can_see_secteur(secteur: str) -> bool:
-    if current_user.role in ("directrice", "finance"):
+    if has_any_role({"direction", "finance"}):
         return True
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         return (current_user.secteur_assigne or "") == (secteur or "")
     return False
 
@@ -46,7 +46,7 @@ def ensure_factures_folder():
 
 def visible_subventions():
     q = Subvention.query.filter_by(est_archive=False)
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         q = q.filter(Subvention.secteur == current_user.secteur_assigne)
     return q.order_by(Subvention.annee_exercice.desc(), Subvention.nom.asc()).all()
 
@@ -114,11 +114,11 @@ def get_ligne_a_ventiler(sub: Subvention) -> LigneBudget:
 @login_required
 @require_perm("inventaire:view")
 def factures_list():
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     q = FactureAchat.query
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         q = q.filter(FactureAchat.secteur_principal == current_user.secteur_assigne)
 
     factures = q.order_by(FactureAchat.created_at.desc()).all()
@@ -128,11 +128,11 @@ def factures_list():
 @bp.route("/nouvelle", methods=["GET", "POST"])
 @login_required
 def facture_new():
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     # choix secteur
-    secteur_default = current_user.secteur_assigne if current_user.role == "responsable_secteur" else ""
+    secteur_default = current_user.secteur_assigne if has_role("responsable_secteur") else ""
 
     if request.method == "POST":
         secteur = (request.form.get("secteur_principal") or secteur_default or "").strip()
@@ -181,7 +181,7 @@ def facture_new():
     return render_template(
         "facture_new.html",
         secteur_default=secteur_default,
-        is_resp=(current_user.role == "responsable_secteur"),
+        is_resp=has_role("responsable_secteur"),
     )
 
 
@@ -197,7 +197,7 @@ def facture_new_alias():
 @login_required
 @require_perm("inventaire:view")
 def facture_detail(facture_id):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     f = FactureAchat.query.get_or_404(facture_id)
@@ -223,7 +223,7 @@ def facture_detail(facture_id):
             ligne_id = int(request.form.get("ligne_budget_id") or 0)
 
             # cohérence avec secteur principal (blindage)
-            if current_user.role == "responsable_secteur" and f.secteur_principal != current_user.secteur_assigne:
+            if has_role("responsable_secteur") and f.secteur_principal != current_user.secteur_assigne:
                 abort(403)
 
             # Détermine la "subvention" support :
@@ -321,7 +321,7 @@ def facture_detail(facture_id):
 @bp.route("/<int:facture_id>/validate", methods=["POST"])
 @login_required
 def facture_validate(facture_id):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     f = FactureAchat.query.get_or_404(facture_id)
@@ -336,7 +336,7 @@ def facture_validate(facture_id):
         return redirect(url_for("inventaire.facture_detail", facture_id=f.id))
 
     # Blindage : un responsable ne peut valider que si toutes les lignes sont dans SON secteur
-    if current_user.role == "responsable_secteur":
+    if has_role("responsable_secteur"):
         if f.secteur_principal != current_user.secteur_assigne:
             abort(403)
         for fl in f.lignes:
@@ -381,7 +381,7 @@ def facture_validate(facture_id):
 @login_required
 @require_perm("inventaire:view")
 def facture_download(facture_id):
-    if current_user.role == "admin_tech":
+    if has_role("admin_tech"):
         abort(403)
 
     f = FactureAchat.query.get_or_404(facture_id)

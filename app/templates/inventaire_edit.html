@@ -28,7 +28,7 @@
           </div>
           <div>
             <label>Secteur</label>
-            {% if current_user.role in ['finance','directrice'] %}
+            {% if has_any_role(['finance','direction']) %}
               <input type="text" name="secteur" value="{{ item.secteur }}">
             {% else %}
               <input type="text" name="secteur" value="{{ item.secteur }}" readonly>

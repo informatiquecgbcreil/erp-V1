@@ -5,7 +5,7 @@
 
   <div class="card">
     <h1>Équipe</h1>
-    <p class="muted">Réservé à <strong>admin_tech</strong>. Création / suppression d’utilisateurs.</p>
+    <p class="muted">Réservé aux utilisateurs autorisés. Création / suppression d’utilisateurs.</p>
   </div>
 
   <div class="grid two">
@@ -32,11 +32,10 @@
         <div class="row two">
           <div>
             <label>Rôle</label>
-            <select name="role" id="roleSelect" required>
-              <option value="responsable_secteur">responsable_secteur</option>
-              <option value="finance">finance</option>
-              <option value="directrice">directrice</option>
-              <option value="admin_tech">admin_tech</option>
+            <select name="role_code" id="roleSelect" required>
+              {% for r in roles %}
+                <option value="{{ r.code }}">{{ r.code }}</option>
+              {% endfor %}
             </select>
           </div>
 
@@ -86,7 +85,7 @@
               <tr>
                 <td><strong>{{ u.nom }}</strong></td>
                 <td class="muted">{{ u.email }}</td>
-                <td>{{ u.role }}</td>
+                <td>{{ u.role_codes|join(', ') }}</td>
                 <td class="muted">{{ u.secteur_assigne or "—" }}</td>
                 <td>
                   <form method="POST" action="{{ url_for('admin.delete_user', user_id=u.id) }}">
